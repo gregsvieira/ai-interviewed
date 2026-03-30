@@ -24,6 +24,8 @@ export function InterviewRoom() {
   const [showConversation, setShowConversation] = useState(true)
   const [interviewStarted, setInterviewStarted] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [sttError, setSttError] = useState<string | null>(null)
+  const [manualText, setManualText] = useState('')
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const preloadedUsedRef = useRef(false)
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -107,23 +109,29 @@ export function InterviewRoom() {
   }, [])
 
   useEffect(() => {
+    console.log('[InterviewRoom] preloadedMessage effect:', { preloadedMessage, preloadedUsed: preloadedUsedRef.current, interviewStarted })
     if (preloadedMessage && !preloadedUsedRef.current && interviewStarted === false) {
       preloadedUsedRef.current = true
       setInterviewStarted(true)
       startInterview()
+      console.log('[InterviewRoom] Setting typing message:', preloadedMessage.text.substring(0, 50) + '...')
       setTypingMessage({ role: 'ai', text: preloadedMessage.text })
     }
   }, [preloadedMessage])
 
   useEffect(() => {
+    console.log('[InterviewRoom] typingMessage effect:', { typingMessage, interviewerGender })
     if (typingMessage) {
       if (typingMessage.role === 'ai') {
+        console.log('[InterviewRoom] Starting TTS with gender:', interviewerGender)
         setAiSpeaking(true)
-        ttsService.speak(typingMessage.text, interviewerGender).catch(() => {
+        ttsService.speak(typingMessage.text, interviewerGender).catch((err) => {
+          console.log('[InterviewRoom] TTS error:', err)
           setAiSpeaking(false)
         })
 
         const timeout = setTimeout(() => {
+          console.log('[InterviewRoom] Adding message to log')
           addMessage({ role: 'ai', text: typingMessage.text })
           setTypingMessage(null)
         }, 500)
@@ -177,18 +185,31 @@ export function InterviewRoom() {
 
   const handleMicPress = async () => {
     console.log('[InterviewRoom] Mic pressed');
+    setSttError(null)
     accumulatedTextRef.current = ''
     setUserSpeakingText('')
     setIsRecording(true)
+    setManualText('')
 
     try {
       await sttService.start()
       console.log('[InterviewRoom] STT started');
     } catch (err) {
       console.error('[InterviewRoom] STT start error:', err)
+      setSttError('Voice recognition not available. Please use manual input below.')
       setUserSpeaking(false)
       setIsRecording(false)
     }
+  }
+
+  const handleManualSubmit = () => {
+    const text = manualText.trim()
+    if (text) {
+      addMessage({ role: 'user', text })
+      socket?.emit('user:text', { text })
+    }
+    setManualText('')
+    setSttError(null)
   }
 
   const handleMicRelease = () => {
@@ -265,6 +286,27 @@ export function InterviewRoom() {
             onMicRelease={handleMicRelease}
           />
         </div>
+
+        {(sttError || manualText) && (
+          <div className="w-full max-w-md mx-auto mb-4 space-y-2">
+            {sttError && (
+              <p className="text-red-400 text-sm text-center">{sttError}</p>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={manualText}
+                onChange={(e) => setManualText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
+                placeholder="Type your answer here..."
+                className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+              />
+              <Button onClick={handleManualSubmit} disabled={!manualText.trim()}>
+                Send
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="border-t border-zinc-800 shrink-0">
