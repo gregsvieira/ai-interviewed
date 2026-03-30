@@ -1,0 +1,108 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/stores/auth.store'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
+export function LoginForm() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isRegister, setIsRegister] = useState(false)
+  const [name, setName] = useState('')
+  const [error, setError] = useState('')
+  const { login, register, isLoading } = useAuthStore()
+  const navigate = useNavigate()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    try {
+      if (isRegister) {
+        await register(email, password, name)
+      } else {
+        await login(email, password)
+      }
+      navigate('/config')
+    } catch {
+      setError('Credenciais inválidas')
+    }
+  }
+
+  return (
+    <Card className="w-full max-w-md bg-zinc-900 border-zinc-800">
+      <CardHeader>
+        <CardTitle className="text-zinc-100">
+          {isRegister ? 'Criar Conta' : 'Entrar'}
+        </CardTitle>
+        <CardDescription className="text-zinc-400">
+          {isRegister
+            ? 'Crie sua conta para começar'
+            : 'Faça login para continuar'}
+        </CardDescription>
+      </CardHeader>
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          {error && (
+            <div className="text-red-400 text-sm text-center">{error}</div>
+          )}
+          {isRegister && (
+            <div className="space-y-2">
+              <Label className="text-zinc-300">Nome</Label>
+              <Input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Seu nome"
+                className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                required={isRegister}
+              />
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label className="text-zinc-300">Email</Label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="seu@email.com"
+              className="bg-zinc-800 border-zinc-700 text-zinc-100"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-zinc-300">Senha</Label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="bg-zinc-800 border-zinc-700 text-zinc-100"
+              required
+            />
+          </div>
+        </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+          <Button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Carregando...' : isRegister ? 'Criar Conta' : 'Entrar'}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full text-zinc-400 hover:text-zinc-100"
+            onClick={() => setIsRegister(!isRegister)}
+          >
+            {isRegister
+              ? 'Já tem conta? Entre aqui'
+              : 'Não tem conta? Cadastre-se'}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
+  )
+}
