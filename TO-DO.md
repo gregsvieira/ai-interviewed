@@ -45,7 +45,7 @@
 - [x] Stop MediaRecorder on unmount
 - [x] Close MediaStream tracks
 - [x] Disconnect WebSocket
-- [ ] Prevent memory leaks
+- [x] Prevent memory leaks
 
 ### Monitoring & Debugging
 - [x] Add logging for audio lifecycle events
