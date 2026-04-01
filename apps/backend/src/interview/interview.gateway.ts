@@ -102,9 +102,13 @@ export class InterviewGateway implements OnGatewayConnection, OnGatewayDisconnec
       );
 
       console.log('First message generated:', firstMessage.substring(0, 100));
+      console.log('Emitting interview:started with interviewId:', interviewId);
       client.emit('interview:started', { interviewId, candidateName, interviewerName: interviewer.name, interviewerGender: interviewer.gender });
+      console.log('Emitting ai:text...');
       client.emit('ai:text', { text: firstMessage, candidateName, interviewerName: interviewer.name, interviewerGender: interviewer.gender });
+      console.log('Emitting ai:speaking...');
       client.emit('ai:speaking', true);
+      console.log('All events emitted successfully');
 
       return { interviewId, candidateName, interviewerName: interviewer.name, interviewerGender: interviewer.gender };
     } catch (error) {

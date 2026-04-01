@@ -59,16 +59,9 @@ services:
       - ollama-data:/root/.ollama
     networks:
       - interviewed-network
-    deploy:
-      resources:
-        reservations:
-          # devices:
-          #   - driver: nvidia
-          #     count: all
-          #     capabilities: [gpu]
-    # Para rodar sem GPU, descomente:
     environment:
       - OLLAMA_HOST=0.0.0.0
+    command: sh -c "ollama pull qwen2.5-coder && ollama serve"
 
 networks:
   interviewed-network:
