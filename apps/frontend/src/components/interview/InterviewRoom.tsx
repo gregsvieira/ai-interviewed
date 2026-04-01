@@ -17,6 +17,7 @@ export function InterviewRoom() {
   const { token, user } = useAuthStore()
 
   const [socket, setSocket] = useState<Socket | null>(null)
+  const [interviewId, setInterviewId] = useState<string | null>(null)
   const [sttService] = useState(() => new MediaRecorderService())
   const [ttsService] = useState(() => new WebSpeechTTS())
   const [typingMessage, setTypingMessage] = useState<{ role: 'ai' | 'user'; text: string } | null>(null)
@@ -51,6 +52,11 @@ export function InterviewRoom() {
           level: selectedLevel,
           duration: 30,
           candidateName: user?.name || 'Candidate',
+        }, (response: { interviewId?: string }) => {
+          if (response?.interviewId) {
+            console.log('[InterviewRoom] Got interviewId:', response.interviewId);
+            setInterviewId(response.interviewId);
+          }
         })
         startInterview()
         setInterviewStarted(true)
@@ -78,7 +84,7 @@ export function InterviewRoom() {
         accumulatedTextRef.current = text
         setUserSpeakingText(text)
         addMessage({ role: 'user', text })
-        newSocket.emit('user:text', { text })
+        newSocket.emit('user:text', { interviewId, text })
       }
     })
 
@@ -154,7 +160,7 @@ export function InterviewRoom() {
         decrementTime()
       }, 1000)
     } else {
-      socket?.emit('end')
+      socket?.emit('end', { interviewId })
       navigate('/history')
     }
 
@@ -224,9 +230,21 @@ export function InterviewRoom() {
         onSpeakingChange: (speaking) => {
           setUserSpeaking(speaking)
         },
-        onChunk: (chunk) => {
+        onChunk: async (chunk) => {
           console.log('[InterviewRoom] Audio chunk:', chunk.size, 'bytes');
-          socketRef.current?.emit('audio:chunk', { audio: chunk })
+          
+          if (!socketRef.current?.connected) {
+            console.log('[InterviewRoom] Socket not connected, skipping chunk');
+            return
+          }
+          
+          try {
+            const arrayBuffer = await chunk.arrayBuffer()
+            console.log('[InterviewRoom] Sending chunk, socket connected:', socketRef.current?.connected)
+            socketRef.current?.emit('audio:chunk', { interviewId, audio: arrayBuffer })
+          } catch (err) {
+            console.error('[InterviewRoom] Error converting chunk:', err)
+          }
         },
         onError: (error) => {
           console.error('[InterviewRoom] STT error:', error);
@@ -255,7 +273,7 @@ export function InterviewRoom() {
     const text = manualText.trim()
     if (text) {
       addMessage({ role: 'user', text })
-      socket?.emit('user:text', { text })
+      socket?.emit('user:text', { interviewId, text })
     }
     setManualText('')
     setSttError(null)
@@ -273,11 +291,11 @@ export function InterviewRoom() {
     setIsRecording(false)
 
     console.log('[InterviewRoom] Requesting server transcription')
-    socketRef.current?.emit('audio:transcribe', {})
+    socketRef.current?.emit('audio:transcribe', { interviewId })
   }
 
   const handleEndInterview = () => {
-    socket?.emit('end')
+    socket?.emit('end', { interviewId })
     ttsService.stop()
     setPreloadedMessage(null)
     endInterview()

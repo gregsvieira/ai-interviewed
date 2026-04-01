@@ -168,8 +168,21 @@ export class InterviewGateway implements OnGatewayConnection, OnGatewayDisconnec
   @SubscribeMessage('audio:chunk')
   async handleAudioChunk(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { audio: any },
+    @MessageBody() data: { interviewId: string; audio: any },
   ) {
+    console.log('[Audio] Received audio:chunk for interview:', data.interviewId);
+    
+    const interviewData = this.activeInterviews.get(data.interviewId);
+    if (!interviewData) {
+      console.log('[Audio] No active interview found for:', data.interviewId);
+      return { error: 'No active interview' };
+    }
+
+    if (interviewData.socketId !== client.id) {
+      console.log('[Audio] Socket mismatch for interview:', data.interviewId, 'expected:', interviewData.socketId, 'got:', client.id);
+      return { error: 'Socket mismatch' };
+    }
+    
     let audioBuffer: Buffer;
     
     if (data.audio instanceof ArrayBuffer) {
@@ -178,31 +191,15 @@ export class InterviewGateway implements OnGatewayConnection, OnGatewayDisconnec
       audioBuffer = data.audio;
     } else if (typeof data.audio === 'object' && data.audio.data) {
       audioBuffer = Buffer.from(data.audio.data);
+    } else if (typeof data.audio === 'string') {
+      audioBuffer = Buffer.from(data.audio, 'base64');
     } else {
       console.error('[Audio] Unknown audio data format:', typeof data.audio);
       return { error: 'Unknown audio format' };
     }
 
-    console.log('[Audio] Received audio chunk:', audioBuffer.length, 'bytes');
+    console.log('[Audio] Processed audio chunk:', audioBuffer.length, 'bytes');
     
-    const interview = [...this.activeInterviews.entries()].find(([, i]) => i.socketId === client.id);
-    if (!interview) {
-      console.log('[Audio] No active interview found for audio chunk');
-      return { error: 'No active interview' };
-    }
-
-    const [interviewId] = interview;
-    let interviewData = this.activeInterviews.get(interviewId);
-    
-    if (!interviewData) {
-      interviewData = {
-        socketId: client.id,
-        userId: client.data.user?.id || 'test-user',
-        audioChunks: [],
-      };
-      this.activeInterviews.set(interviewId, interviewData);
-    }
-
     interviewData.audioChunks.push(audioBuffer);
 
     return { received: true, chunks: interviewData.audioChunks.length };
@@ -211,19 +208,22 @@ export class InterviewGateway implements OnGatewayConnection, OnGatewayDisconnec
   @SubscribeMessage('audio:transcribe')
   async handleAudioTranscribe(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { interviewId?: string },
+    @MessageBody() data: { interviewId: string },
   ) {
-    console.log('Transcribe request received');
+    console.log('Transcribe request received for interview:', data.interviewId);
     
-    const interview = [...this.activeInterviews.entries()].find(
-      ([, i]) => i.socketId === client.id,
-    );
-    if (!interview) {
-      console.log('No active interview found for transcription');
+    const interviewData = this.activeInterviews.get(data.interviewId);
+    if (!interviewData) {
+      console.log('No active interview found for transcription:', data.interviewId);
       return { error: 'No active interview' };
     }
 
-    const [interviewId, interviewData] = interview;
+    if (interviewData.socketId !== client.id) {
+      console.log('Socket mismatch for transcription:', data.interviewId);
+      return { error: 'Socket mismatch' };
+    }
+
+    const interviewId = data.interviewId;
     
     if (interviewData.audioChunks.length === 0) {
       console.log('No audio chunks to transcribe');
