@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { WS_URL } from '@/lib/utils'
-import { WebSocketSTT } from '@/services/audio/websocket.stt'
+import { MediaRecorderService } from '@/services/audio/mediaRecorder.stt'
 import { WebSpeechTTS } from '@/services/audio/webSpeech.tts'
 import { useAuthStore } from '@/stores/auth.store'
 import { useInterviewStore } from '@/stores/interview.store'
@@ -17,7 +17,7 @@ export function InterviewRoom() {
   const { token, user } = useAuthStore()
 
   const [socket, setSocket] = useState<Socket | null>(null)
-  const [sttService] = useState(() => new WebSocketSTT())
+  const [sttService] = useState(() => new MediaRecorderService())
   const [ttsService] = useState(() => new WebSpeechTTS())
   const [typingMessage, setTypingMessage] = useState<{ role: 'ai' | 'user'; text: string } | null>(null)
   const [userSpeakingText, setUserSpeakingText] = useState('')
@@ -30,6 +30,7 @@ export function InterviewRoom() {
   const preloadedUsedRef = useRef(false)
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const accumulatedTextRef = useRef('')
+  const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
     if (!token) {
@@ -90,6 +91,7 @@ export function InterviewRoom() {
       endInterview()
     })
 
+    socketRef.current = newSocket
     setSocket(newSocket)
     ttsService.onSpeakingChange(setAiSpeaking)
 
@@ -110,19 +112,6 @@ export function InterviewRoom() {
         clearTimeout(silenceTimeoutRef.current)
       }
     }
-  }, [])
-
-  useEffect(() => {
-    sttService.onResult((text) => {
-      console.log('[InterviewRoom] STT result:', text);
-      accumulatedTextRef.current = text
-      setUserSpeakingText(text.trim())
-    })
-
-    sttService.onSpeakingChange((speaking) => {
-      console.log('[InterviewRoom] Speaking changed:', speaking);
-      setUserSpeaking(speaking)
-    })
   }, [])
 
   useEffect(() => {
@@ -184,8 +173,12 @@ export function InterviewRoom() {
         clearTimeout(silenceTimeoutRef.current)
       }
       silenceTimeoutRef.current = setTimeout(() => {
+        console.log('[InterviewRoom] Silence detected, stopping recording')
         sttService.stop()
+        setUserSpeaking(false)
+        setUserSpeakingText('')
         setIsRecording(false)
+        socketRef.current?.emit('audio:transcribe', {})
       }, 2000)
     }
 
@@ -227,7 +220,20 @@ export function InterviewRoom() {
     }
 
     try {
-      await sttService.start()
+      await sttService.start({
+        onSpeakingChange: (speaking) => {
+          setUserSpeaking(speaking)
+        },
+        onChunk: (chunk) => {
+          console.log('[InterviewRoom] Audio chunk:', chunk.size, 'bytes');
+          socketRef.current?.emit('audio:chunk', { audio: chunk })
+        },
+        onError: (error) => {
+          console.error('[InterviewRoom] STT error:', error);
+          setSttError(error)
+          setIsRecording(false)
+        }
+      })
       console.log('[InterviewRoom] Audio streaming started')
     } catch (err: any) {
       console.error('[InterviewRoom] Audio streaming start error:', err)
@@ -263,25 +269,11 @@ export function InterviewRoom() {
     }
     sttService.stop()
     setUserSpeaking(false)
-
-    const finalText = accumulatedTextRef.current.trim()
-    console.log('[InterviewRoom] Final text from local STT:', finalText);
-    accumulatedTextRef.current = ''
     setUserSpeakingText('')
-
-    if (finalText) {
-      addMessage({ role: 'user', text: finalText })
-      socket?.emit('user:text', { text: finalText })
-    } else {
-      console.log('[InterviewRoom] No text from local STT, requesting server transcription')
-      socket?.emit('audio:transcribe', {})
-    }
     setIsRecording(false)
 
-    if (finalText) {
-      addMessage({ role: 'user', text: finalText })
-      socket?.emit('user:text', { text: finalText })
-    }
+    console.log('[InterviewRoom] Requesting server transcription')
+    socketRef.current?.emit('audio:transcribe', {})
   }
 
   const handleEndInterview = () => {

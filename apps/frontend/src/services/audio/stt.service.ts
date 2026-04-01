@@ -1,11 +1,10 @@
-import { STTService } from '@/types/audio'
-import { WebSocketSTT } from './websocket.stt'
+import { MediaRecorderService } from './mediaRecorder.stt'
 
-let instance: STTService | null = null
+let instance: MediaRecorderService | null = null
 
-export function getSTTService(): STTService {
+export function getSTTService(): MediaRecorderService {
   if (!instance) {
-    instance = new WebSocketSTT()
+    instance = new MediaRecorderService()
   }
   return instance
 }

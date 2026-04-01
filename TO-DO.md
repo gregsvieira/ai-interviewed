@@ -58,19 +58,17 @@
 ### Bug 1: Multi-click to start InterviewRoom
 - **Description**: Need to click the "Start Interview" button ~4 times to navigate to InterviewRoom
 - **Priority**: High
-- **Status**: Open
+- **Status**: ✅ FIXED
 
 ### Bug 2: Preloaded data not loading immediately
 - **Description**: Preloaded message/interviewer data only appears after several seconds, should be ready before interview starts
 - **Priority**: High
-- **Status**: Open
-- **Logs to check**: 
-  - `[InterviewRoom] preloadedMessage effect`
-  - `setPreloadedMessage`
+- **Status**: ✅ FIXED
+- **Fix**: Countdown waits for preloaded data before navigating
 
 ### Bug 3: Voice collection inconsistent across browsers
 - **Description**: Voice is not being captured consistently across browsers. Text doesn't appear in real-time during speech
 - **Priority**: High
-- **Status**: Open
-- **Affected**: Chrome, Safari (inconsistent)
-- **Related to**: MediaRecorder streaming, audio chunk handling
+- **Status**: ✅ FIXED
+- **Fix**: Refactored to use MediaRecorderService separately from WebSocket, socket stays open for transcription result
+

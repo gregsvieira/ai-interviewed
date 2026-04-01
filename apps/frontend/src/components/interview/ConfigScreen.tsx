@@ -78,15 +78,19 @@ export function ConfigScreen() {
     } else {
       if (preloadedDataRef.current) {
         setPreloadedMessage(preloadedDataRef.current)
+        setConfig(selectedTopic, selectedSubtopic, duration, level)
+        navigate('/interview')
+      } else {
+        console.log('[Config] Preload not ready, waiting...')
+        setCountdown(1)
       }
-      setConfig(selectedTopic, selectedSubtopic, duration, level)
-      navigate('/interview')
     }
   }, [countdown, selectedTopic, selectedSubtopic, duration, level, micTestStatus])
 
   const handleMouseEnter = () => {
-    if (!selectedTopic || !selectedSubtopic || countdown !== null || preloading || preloadedDataRef.current) return
+    if (!selectedTopic || !selectedSubtopic || countdown !== null) return
     if (micTestStatus !== 'success') return
+    if (preloadedDataRef.current || preloading) return
     setPreloading(true)
     startPreload()
   }
@@ -215,11 +219,17 @@ const testMicrophone = async () => {
 
   const handleStart = () => {
     if (selectedTopic && selectedSubtopic) {
+      if (countdown !== null) return
+      
       if (micTestStatus !== 'success' && micTestStatus !== 'testing') {
         testMicrophone()
-        return
       }
-      if (micTestStatus === 'success' && preloadedDataRef.current) {
+      
+      if (micTestStatus === 'success' || micTestStatus === 'testing') {
+        if (!preloadedDataRef.current && !preloading) {
+          setPreloading(true)
+          startPreload()
+        }
         preloadedDataRef.current = null
         setPreloading(false)
         setCountdown(3)

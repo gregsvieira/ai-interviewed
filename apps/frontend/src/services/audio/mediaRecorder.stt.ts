@@ -1,106 +1,169 @@
-import { STTService } from '@/types/audio'
+export interface AudioChunkCallback {
+  (chunk: Blob): void
+}
 
-export class MediaRecorderSTT implements STTService {
+export interface STTCallbacks {
+  onSpeakingChange?: (speaking: boolean) => void
+  onChunk?: AudioChunkCallback
+  onError?: (error: string) => void
+}
+
+export class MediaRecorderService {
   private mediaStream: MediaStream | null = null
   private mediaRecorder: MediaRecorder | null = null
-  private audioChunks: Blob[] = []
-  private chunkCallback?: (chunks: Blob[]) => void
   private isRecording = false
+  private isStopped = false
+  private callbacks: STTCallbacks = {}
+  private chunkInterval = 250
 
-  async start(): Promise<void> {
+  async start(callbacks: STTCallbacks): Promise<void> {
+    if (this.isRecording) {
+      console.log('[MediaRecorderService] Already recording')
+      return
+    }
+
+    this.callbacks = callbacks
+    this.isStopped = false
+    console.log('[MediaRecorderService] Starting...')
+
     try {
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 16000,
+          autoGainControl: true,
         },
       })
 
+      console.log('[MediaRecorderService] MediaStream obtained')
+
       const mimeType = this.getSupportedMimeType()
-      console.log('[MediaRecorderSTT] Using MIME type:', mimeType)
+      console.log('[MediaRecorderService] Using MIME type:', mimeType || 'default')
 
-      this.mediaRecorder = new MediaRecorder(this.mediaStream, {
-        mimeType,
-      })
+      const recorderOptions: MediaRecorderOptions = {}
+      if (mimeType) {
+        recorderOptions.mimeType = mimeType
+      }
 
-      this.audioChunks = []
+      this.mediaRecorder = new MediaRecorder(this.mediaStream, recorderOptions)
 
       this.mediaRecorder.ondataavailable = (event) => {
+        if (this.isStopped) return
         if (event.data.size > 0) {
-          this.audioChunks.push(event.data)
-          this.chunkCallback?.(this.audioChunks)
+          console.log('[MediaRecorderService] Audio chunk available:', event.data.size, 'bytes')
+          this.callbacks.onChunk?.(event.data)
         }
       }
 
-      this.mediaRecorder.onerror = (event) => {
-        console.error('[MediaRecorderSTT] MediaRecorder error:', event)
+      this.mediaRecorder.onerror = (event: any) => {
+        console.error('[MediaRecorderService] MediaRecorder error:', event)
+        this.callbacks.onError?.('MediaRecorder error: ' + event.message)
+        this.isStopped = true
       }
 
-      this.mediaRecorder.start(250)
+      this.mediaRecorder.onstop = () => {
+        console.log('[MediaRecorderService] MediaRecorder stopped')
+      }
+
+      this.mediaRecorder.start(this.chunkInterval)
       this.isRecording = true
-      console.log('[MediaRecorderSTT] Recording started')
-    } catch (error) {
-      console.error('[MediaRecorderSTT] Failed to start recording:', error)
-      this.stop()
+      this.callbacks.onSpeakingChange?.(true)
+      console.log('[MediaRecorderService] Recording started')
+    } catch (error: any) {
+      console.error('[MediaRecorderService] Failed to start:', error)
+      this.callbacks.onError?.(error.message || 'Failed to start recording')
+      this.cleanup()
       throw error
     }
   }
 
   stop(): void {
+    console.log('[MediaRecorderService] Stopping...')
+    this.isStopped = true
+    this.cleanup()
+  }
+
+  private cleanup(): void {
     if (this.mediaRecorder && this.isRecording) {
-      this.mediaRecorder.stop()
+      try {
+        this.mediaRecorder.stop()
+      } catch (e) {
+        console.log('[MediaRecorderService] MediaRecorder stop error:', e)
+      }
       this.isRecording = false
-      console.log('[MediaRecorderSTT] Recording stopped')
+      console.log('[MediaRecorderService] Recording stopped')
     }
 
     if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach((track) => track.stop())
+      this.mediaStream.getTracks().forEach((track) => {
+        try {
+          track.stop()
+        } catch (e) {
+          console.log('[MediaRecorderService] Track stop error:', e)
+        }
+      })
       this.mediaStream = null
-      console.log('[MediaRecorderSTT] MediaStream tracks stopped')
+      console.log('[MediaRecorderService] MediaStream tracks stopped')
     }
-  }
 
-  onResult(_callback: (text: string) => void): void {
-  }
-
-  onInterimResult(_callback: (text: string) => void): void {
-  }
-
-  onSpeakingChange(_callback: (speaking: boolean) => void): void {
-  }
-
-  onChunk(callback: (chunks: Blob[]) => void): void {
-    this.chunkCallback = callback
+    this.callbacks.onSpeakingChange?.(false)
+    this.callbacks = {}
   }
 
   isSupported(): boolean {
-    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+    const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+    const hasMediaRecorder = typeof MediaRecorder !== 'undefined'
+    return hasMediaDevices && hasMediaRecorder
+  }
+
+  isSafari(): boolean {
+    return /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+  }
+
+  isIOS(): boolean {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
   }
 
   private getSupportedMimeType(): string {
-    const types = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/ogg;codecs=opus',
-      'audio/mp4',
-      'audio/wav',
-    ]
+    const isSafari = this.isSafari()
+    const isIOS = this.isIOS()
+
+    let types: string[]
+
+    if (isIOS) {
+      types = [
+        'audio/mp4',
+        'audio/m4a',
+        'audio/aac',
+      ]
+    } else if (isSafari) {
+      types = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/aac',
+      ]
+    } else {
+      types = [
+        'audio/webm;codecs=opus',
+        'audio/webm;codecs=vp8',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+      ]
+    }
 
     for (const type of types) {
-      if (MediaRecorder.isTypeSupported(type)) {
-        return type
+      try {
+        if (MediaRecorder.isTypeSupported(type)) {
+          console.log('[MediaRecorderService] MIME type supported:', type)
+          return type
+        }
+      } catch (e) {
+        console.log('[MediaRecorderService] Error checking MIME type:', type, e)
       }
     }
 
+    console.log('[MediaRecorderService] No specific MIME type supported, using default')
     return ''
-  }
-
-  getChunks(): Blob[] {
-    return this.audioChunks
-  }
-
-  clearChunks(): void {
-    this.audioChunks = []
   }
 }

@@ -1,6 +1,4 @@
-import { STTService } from '@/types/audio'
-
-export class WebSpeechSTT implements STTService {
+export class WebSpeechSTT {
   private recognition: any = null;
   private resultCallback?: (text: string) => void;
   private interimCallback?: (text: string) => void;

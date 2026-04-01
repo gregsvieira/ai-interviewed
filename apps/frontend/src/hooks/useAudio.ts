@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { WebSocketSTT } from '@/services/audio/websocket.stt'
+import { useState, useCallback } from 'react'
+import { MediaRecorderService } from '@/services/audio/mediaRecorder.stt'
 import { WebSpeechTTS } from '@/services/audio/webSpeech.tts'
 import type { TTSService } from '@/types/audio'
 
@@ -15,18 +15,17 @@ interface UseAudioReturn {
 }
 
 export function useAudio(): UseAudioReturn {
-  const [sttService] = useState(() => new WebSocketSTT())
+  const [sttService] = useState(() => new MediaRecorderService())
   const [ttsService] = useState<TTSService>(() => new WebSpeechTTS())
   const [isUserSpeaking, setIsUserSpeaking] = useState(false)
-  const [isAiSpeaking, setIsAiSpeaking] = useState(false)
-
-  useEffect(() => {
-    sttService.onSpeakingChange(setIsUserSpeaking)
-    ttsService.onSpeakingChange(setIsAiSpeaking)
-  }, [sttService, ttsService])
+  const [isAiSpeaking] = useState(false)
 
   const startListening = useCallback(async () => {
-    await sttService.start()
+    await sttService.start({
+      onSpeakingChange: setIsUserSpeaking,
+      onChunk: () => {},
+      onError: () => {}
+    })
   }, [sttService])
 
   const stopListening = useCallback(() => {
