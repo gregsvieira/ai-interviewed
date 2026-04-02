@@ -37,7 +37,7 @@ export function ConfigScreen() {
   const [preloading, setPreloading] = useState(false)
   const [micTestStatus, setMicTestStatus] = useState<MicTestStatus>('idle')
   const socketRef = useRef<Socket | null>(null)
-  const preloadedDataRef = useRef<{ text: string; interviewerName: string; interviewerGender?: Gender } | null>(null)
+  const preloadedDataRef = useRef<{ text: string; interviewerName: string; interviewerGender?: Gender; interviewerAvatar?: string } | null>(null)
   const navigate = useNavigate()
   const { setConfig, setPreloadedMessage } = useInterviewStore()
   const recognitionRef = useRef<any>(null)
@@ -201,11 +201,12 @@ const testMicrophone = async () => {
       })
     })
 
-    socketRef.current.on('ai:text', (data: { text: string; interviewerName?: string; interviewerGender?: Gender }) => {
+    socketRef.current.on('ai:text', (data: { text: string; interviewerName?: string; interviewerGender?: Gender; interviewerAvatar?: string }) => {
       preloadedDataRef.current = {
         text: data.text,
         interviewerName: data.interviewerName || 'Interviewer',
         interviewerGender: data.interviewerGender,
+        interviewerAvatar: data.interviewerAvatar,
       }
       setPreloading(false)
       socketRef.current?.disconnect()

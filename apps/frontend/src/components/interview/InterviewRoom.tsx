@@ -16,7 +16,7 @@ import { SpeakingCircle } from './SpeakingCircle'
 
 export function InterviewRoom() {
   const navigate = useNavigate()
-  const { selectedTopic, selectedSubtopic, selectedLevel, isAiSpeaking, isUserSpeaking, conversationLog, timeRemaining, addMessage, updateMessage, setAiSpeaking, setUserSpeaking, decrementTime, startInterview, endInterview, preloadedMessage, setPreloadedMessage, interviewerGender, interviewerName } = useInterviewStore()
+  const { selectedTopic, selectedSubtopic, selectedLevel, isAiSpeaking, isUserSpeaking, conversationLog, timeRemaining, addMessage, updateMessage, setAiSpeaking, setUserSpeaking, decrementTime, startInterview, endInterview, preloadedMessage, setPreloadedMessage, interviewerGender, interviewerName, interviewerAvatar, setInterviewerAvatar } = useInterviewStore()
   const { token, user } = useAuthStore()
 
   const [socket, setSocket] = useState<Socket | null>(null)
@@ -81,9 +81,12 @@ export function InterviewRoom() {
       }
     })
 
-    newSocket.on('interview:started', (data: { interviewId: string; candidateName: string; interviewerName: string; interviewerGender: string }) => {
+    newSocket.on('interview:started', (data: { interviewId: string; candidateName: string; interviewerName: string; interviewerGender: string; interviewerAvatar?: string }) => {
       setInterviewId(data.interviewId);
       interviewIdRef.current = data.interviewId;
+      if (data.interviewerAvatar) {
+        setInterviewerAvatar(data.interviewerAvatar);
+      }
     })
 
     newSocket.on('connect_error', (err) => {
@@ -397,7 +400,7 @@ export function InterviewRoom() {
 
       <div className="flex-1 flex flex-col items-center justify-between py-4 px-4 min-h-0">
         <div className="flex items-center justify-center flex-1">
-          <SpeakingCircle label="AI" isSpeaking={isAiSpeaking} size="md" />
+          <SpeakingCircle label={interviewerName || 'AI'} isSpeaking={isAiSpeaking} size="lg" avatar={interviewerAvatar} />
         </div>
 
         {isUserSpeaking && userSpeakingText && (

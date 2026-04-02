@@ -109,11 +109,11 @@ export class InterviewGateway implements OnGatewayConnection, OnGatewayDisconnec
         duration: `${Date.now() - startTime}ms` 
       });
 
-      client.emit('interview:started', { interviewId, candidateName, interviewerName: interviewer.name, interviewerGender: interviewer.gender });
-      client.emit('ai:text', { text: firstMessage, candidateName, interviewerName: interviewer.name, interviewerGender: interviewer.gender });
+      client.emit('interview:started', { interviewId, candidateName, interviewerName: interviewer.name, interviewerGender: interviewer.gender, interviewerAvatar: interviewer.avatar });
+      client.emit('ai:text', { text: firstMessage, candidateName, interviewerName: interviewer.name, interviewerGender: interviewer.gender, interviewerAvatar: interviewer.avatar });
       client.emit('ai:speaking', true);
 
-      return { interviewId, candidateName, interviewerName: interviewer.name, interviewerGender: interviewer.gender };
+      return { interviewId, candidateName, interviewerName: interviewer.name, interviewerGender: interviewer.gender, interviewerAvatar: interviewer.avatar };
     } catch (error) {
       console.error('Error starting interview:', error);
       this.activeInterviews.delete(interviewId);

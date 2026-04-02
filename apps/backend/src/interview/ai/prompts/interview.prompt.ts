@@ -32,6 +32,7 @@ export function generateRandomName(): string {
 export interface InterviewerInfo {
   name: string;
   gender: Gender;
+  avatar: string;
 }
 
 export function generateInterviewer(): InterviewerInfo {
@@ -39,7 +40,13 @@ export function generateInterviewer(): InterviewerInfo {
   const gender: Gender = isMale ? 'male' : 'female';
   const names = isMale ? MALE_NAMES : FEMALE_NAMES;
   const name = names[Math.floor(Math.random() * names.length)];
-  return { name, gender };
+  
+  const avatarCount = isMale ? 11 : 12;
+  const avatarNum = Math.floor(Math.random() * avatarCount) + 1;
+  const avatarPrefix = isMale ? 'man' : 'woman';
+  const avatar = `/avatars/${gender}/ai-${avatarPrefix}-${avatarNum}.jpg`;
+  
+  return { name, gender, avatar };
 }
 
 export const createInterviewPrompt = (

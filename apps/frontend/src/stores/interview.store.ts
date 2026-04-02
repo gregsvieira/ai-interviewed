@@ -8,6 +8,7 @@ export interface PreloadedMessage {
   text: string
   interviewerName: string
   interviewerGender?: Gender
+  interviewerAvatar?: string
 }
 
 interface InterviewState {
@@ -23,6 +24,7 @@ interface InterviewState {
   preloadedMessage: PreloadedMessage | null
   interviewerName: string
   interviewerGender: Gender
+  interviewerAvatar?: string
   setConfig: (topic: Topic | null, subtopic: Subtopic | null, duration: number, level: LevelOption) => void
   startInterview: () => void
   endInterview: () => void
@@ -35,6 +37,7 @@ interface InterviewState {
   setPreloadedMessage: (message: PreloadedMessage | null) => void
   setInterviewerName: (name: string) => void
   setInterviewerGender: (gender: Gender) => void
+  setInterviewerAvatar: (avatar: string) => void
 }
 
 export const useInterviewStore = create<InterviewState>((set, get) => ({
@@ -50,6 +53,7 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
   preloadedMessage: null,
   interviewerName: 'AI',
   interviewerGender: 'male',
+  interviewerAvatar: undefined,
 
   setConfig: (topic, subtopic, duration, level) => {
     set({
@@ -116,6 +120,7 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
       preloadedMessage: null,
       interviewerName: 'AI',
       interviewerGender: 'male',
+      interviewerAvatar: undefined,
     })
   },
 
@@ -123,7 +128,8 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
     set({ 
       preloadedMessage: message,
       interviewerName: message?.interviewerName || 'AI',
-      interviewerGender: message?.interviewerGender || 'male'
+      interviewerGender: message?.interviewerGender || 'male',
+      interviewerAvatar: message?.interviewerAvatar,
     })
   },
 
@@ -133,5 +139,9 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
 
   setInterviewerName: (name) => {
     set({ interviewerName: name })
+  },
+
+  setInterviewerAvatar: (avatar) => {
+    set({ interviewerAvatar: avatar })
   },
 }))
