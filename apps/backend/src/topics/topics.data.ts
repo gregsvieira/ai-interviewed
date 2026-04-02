@@ -1,11 +1,23 @@
 export const TOPICS_DATA = [
   {
+    id: 'softskills',
+    name: 'Soft Skills',
+    subtopics: [
+      { id: 'elevator-pitch', name: 'Elevator Pitch' },
+      { id: 'star-method', name: 'Past Experiences' },
+      { id: 'cultural-fit', name: 'Cultural Fit & Values' },
+      { id: 'future-goals', name: 'Career Goals & Aspirations' },
+      { id: 'tricky-questions', name: 'Handling Tricky Questions' }, // Ex: "Why should we hire you?" ou "Weaknesses"
+    ],
+  },
+  {
     id: 'frontend',
     name: 'Frontend',
     subtopics: [
       { id: 'react', name: 'React' },
-      { id: 'vue', name: 'Vue' },
-      { id: 'angular', name: 'Angular' },
+      { id: 'html', name: 'HTML' },
+      { id: 'javascript', name: 'JavaScript' },
+      { id: 'tailwind', name: 'Tailwind CSS' },
       { id: 'css', name: 'CSS/Styling' },
       { id: 'typescript', name: 'TypeScript' },
     ],
@@ -16,9 +28,15 @@ export const TOPICS_DATA = [
     subtopics: [
       { id: 'node', name: 'Node.js' },
       { id: 'python', name: 'Python' },
-      { id: 'java', name: 'Java' },
-      { id: 'go', name: 'Go' },
-      { id: 'rust', name: 'Rust' },
+      { id: 'nest', name: 'Nest.js' },
+    ],
+  },
+  {
+    id: 'fullstack',
+    name: 'FullStack',
+    subtopics: [
+      { id: 'next', name: 'Next.js' },
+      { id: 'express', name: 'Express.js' },
     ],
   },
   {
