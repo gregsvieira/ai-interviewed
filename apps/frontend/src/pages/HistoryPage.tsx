@@ -50,11 +50,6 @@ export function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950">
-      <header className="border-b border-zinc-800 bg-zinc-900">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-zinc-100">Interview History</h1>
-        </div>
-      </header>
 
       <main className="container mx-auto px-4 py-8">
         {interviews.length === 0 ? (
