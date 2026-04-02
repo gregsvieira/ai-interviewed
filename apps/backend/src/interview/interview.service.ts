@@ -194,6 +194,21 @@ export class InterviewService {
     return this.currentInterviews.get(interviewId);
   }
 
+  async deleteInterview(interviewId: string, userId: string): Promise<boolean> {
+    const interview = await this.storage.get<Interview>('interviews', interviewId);
+    
+    if (!interview) {
+      return false;
+    }
+    
+    if (interview.userId !== userId) {
+      return false;
+    }
+    
+    await this.storage.delete('interviews', interviewId);
+    return true;
+  }
+
   async transcribeAudio(audioBuffer: Buffer): Promise<string> {
     console.log('[InterviewService] transcribeAudio called with', audioBuffer.length, 'bytes');
     

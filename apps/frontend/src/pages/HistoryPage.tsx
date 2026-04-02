@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { interviewApi } from '@/services/api/interview.api'
 import { useHeaderStore } from '@/stores/header.store'
 import { Interview } from '@/types/interview'
-import { ArrowLeft, Calendar, Clock, MessageSquare, Play } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, MessageSquare, Play, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
@@ -16,6 +16,25 @@ export function HistoryPage() {
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!selectedInterview || isDeleting) return
+    
+    if (!window.confirm('Are you sure you want to delete this interview?')) {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      await interviewApi.deleteInterview(selectedInterview.id)
+      navigate('/history')
+    } catch (error) {
+      console.error('Failed to delete interview:', error)
+      setIsDeleting(false)
+    }
+  }
 
   useEffect(() => {
     setTitle(interviewId ? 'Interview Details' : 'History')
@@ -64,15 +83,27 @@ export function HistoryPage() {
     return (
       <div className="min-h-screen bg-zinc-950">
         <main className="container mx-auto px-4 py-8 max-w-3xl">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/history')}
-            className="text-zinc-400 hover:text-zinc-100 mb-6"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to History
-          </Button>
+          <div className="flex items-center gap-4 mb-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/history')}
+              className="text-zinc-400 hover:text-zinc-100"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to History
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="text-zinc-400 hover:text-red-400 hover:bg-zinc-800"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
 
           <Card className="bg-zinc-900 border-zinc-800 mb-6">
             <CardHeader>
@@ -159,7 +190,7 @@ export function HistoryPage() {
             {interviews.map((interview) => (
               <Card
                 key={interview.id}
-                className="bg-zinc-900 border-zinc-800 cursor-pointer hover:border-zinc-700 transition-colors"
+                className="bg-zinc-900 border-zinc-800 cursor-pointer hover:border-blue-600 transition-colors"
                 onClick={() => navigate(`/history/${interview.id}`)}
               >
                 <CardHeader>

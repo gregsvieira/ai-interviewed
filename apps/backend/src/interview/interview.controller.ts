@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Delete, Param, UseGuards, Request } from '@nestjs/common';
 import { InterviewService } from './interview.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -20,5 +20,10 @@ export class InterviewController {
   @Get(':id')
   async getInterview(@Param('id') id: string) {
     return this.interviewService.getInterview(id);
+  }
+
+  @Delete(':id')
+  async deleteInterview(@Request() req, @Param('id') id: string) {
+    return this.interviewService.deleteInterview(id, req.user.id);
   }
 }

@@ -21,4 +21,8 @@ export const interviewApi = {
     const response = await apiClient.get<Interview>(`/interview/${id}`)
     return response.data
   },
+
+  async deleteInterview(id: string): Promise<void> {
+    await apiClient.delete(`/interview/${id}`)
+  },
 }

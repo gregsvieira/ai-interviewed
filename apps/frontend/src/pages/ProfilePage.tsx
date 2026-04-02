@@ -346,7 +346,7 @@ export function ProfilePage() {
                   className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
                     isSelected
                       ? 'border-blue-500 bg-blue-500/10'
-                      : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
+                      : 'border-zinc-700 bg-zinc-800/50 hover:border-blue-600'
                   }`}
                 >
                   <span
