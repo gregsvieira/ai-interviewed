@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@/stores/auth.store'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useAuthStore } from '@/stores/auth.store'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
@@ -24,7 +24,7 @@ export function LoginForm() {
       } else {
         await login(email, password)
       }
-      navigate('/config')
+      navigate('/home')
     } catch {
       setError('Credenciais inválidas')
     }
