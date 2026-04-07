@@ -1,5 +1,23 @@
 services:
   # ============================================
+  # DB - POSTGRESQL
+  # ============================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: interviewed-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=interviewed
+      - POSTGRES_PASSWORD=interviewedpassword
+      - POSTGRES_DB=intervieweddb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+    - interviewed-network
+
+    
+  # ============================================
   # BACKEND - NestJS API (CPU)
   # ============================================
   backend:
@@ -19,6 +37,7 @@ services:
       - OLLAMA_MODEL=qwen2.5-coder
       - STT_SERVICE_URL=http://stt-service:8001
       - HOME=/home/node
+      - DATABASE_URL=postgres://interviewed:interviewedpassword@postgres:5432/intervieweddb
     volumes:
       - interviewed-data:/home/node/.interviewed
     networks:
