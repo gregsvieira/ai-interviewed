@@ -34,12 +34,12 @@ export function LoginForm() {
     <Card className="w-full max-w-md bg-zinc-900 border-zinc-800">
       <CardHeader>
         <CardTitle className="text-zinc-100">
-          {isRegister ? 'Criar Conta' : 'Entrar'}
+          {isRegister ? 'Create Account' : 'Login'}
         </CardTitle>
         <CardDescription className="text-zinc-400">
           {isRegister
-            ? 'Crie sua conta para começar'
-            : 'Faça login para continuar'}
+            ? 'Create your account to start'
+            : 'Login to continue'}
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -49,12 +49,12 @@ export function LoginForm() {
           )}
           {isRegister && (
             <div className="space-y-2">
-              <Label className="text-zinc-300">Nome</Label>
+              <Label className="text-zinc-300">Name</Label>
               <Input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Seu nome"
+                placeholder="Your name"
                 className="bg-zinc-800 border-zinc-700 text-zinc-100"
                 required={isRegister}
               />
@@ -66,13 +66,13 @@ export function LoginForm() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
+              placeholder="your@email.com"
               className="bg-zinc-800 border-zinc-700 text-zinc-100"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-zinc-300">Senha</Label>
+            <Label className="text-zinc-300">Password</Label>
             <Input
               type="password"
               value={password}
@@ -98,8 +98,8 @@ export function LoginForm() {
             onClick={() => setIsRegister(!isRegister)}
           >
             {isRegister
-              ? 'Já tem conta? Entre aqui'
-              : 'Não tem conta? Cadastre-se'}
+              ? 'Already have an account? Log in here.'
+              : 'Don\'t have an account? Sign up.'}
           </Button>
         </CardFooter>
       </form>
