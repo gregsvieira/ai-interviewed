@@ -7,6 +7,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { useAuthStore } from '@/stores/auth.store'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect } from 'react'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -29,6 +30,15 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const token = useAuthStore((state) => state.token)
+  const user = useAuthStore((state) => state.user)
+
+  useEffect(() => {
+    if (token && !user) {
+      useAuthStore.getState().checkAuth()
+    }
+  }, [token, user])
+
   return (
     <AppLayout>
       <Routes>

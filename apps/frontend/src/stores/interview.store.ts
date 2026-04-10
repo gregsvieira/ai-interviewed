@@ -22,6 +22,7 @@ interface InterviewState {
   conversationLog: Message[]
   timeRemaining: number
   preloadedMessage: PreloadedMessage | null
+  preloadedInterviewId: string | null
   interviewerName: string
   interviewerGender: Gender
   interviewerAvatar?: string
@@ -35,6 +36,7 @@ interface InterviewState {
   decrementTime: () => void
   reset: () => void
   setPreloadedMessage: (message: PreloadedMessage | null) => void
+  setPreloadedInterviewId: (id: string | null) => void
   setInterviewerName: (name: string) => void
   setInterviewerGender: (gender: Gender) => void
   setInterviewerAvatar: (avatar: string) => void
@@ -51,6 +53,7 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
   conversationLog: [],
   timeRemaining: 15 * 60,
   preloadedMessage: null,
+  preloadedInterviewId: null,
   interviewerName: 'AI',
   interviewerGender: 'male',
   interviewerAvatar: undefined,
@@ -118,6 +121,7 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
       conversationLog: [],
       timeRemaining: 15 * 60,
       preloadedMessage: null,
+      preloadedInterviewId: null,
       interviewerName: 'AI',
       interviewerGender: 'male',
       interviewerAvatar: undefined,
@@ -131,6 +135,10 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
       interviewerGender: message?.interviewerGender || 'male',
       interviewerAvatar: message?.interviewerAvatar,
     })
+  },
+
+  setPreloadedInterviewId: (id) => {
+    set({ preloadedInterviewId: id })
   },
 
   setInterviewerGender: (gender) => {
