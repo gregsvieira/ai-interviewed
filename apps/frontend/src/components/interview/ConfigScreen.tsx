@@ -11,6 +11,7 @@ import {
 import { INTERVIEW_DURATIONS } from '@/lib/constants'
 import { WS_URL } from '@/lib/utils'
 import { interviewApi } from '@/services/api/interview.api'
+import { useAuthStore } from '@/stores/auth.store'
 import { LevelOption, useInterviewStore } from '@/stores/interview.store'
 import { Gender } from '@/types/audio'
 import { Subtopic, Topic } from '@/types/interview'
@@ -38,8 +39,10 @@ export function ConfigScreen() {
   const [micTestStatus, setMicTestStatus] = useState<MicTestStatus>('idle')
   const socketRef = useRef<Socket | null>(null)
   const preloadedDataRef = useRef<{ text: string; interviewerName: string; interviewerGender?: Gender; interviewerAvatar?: string } | null>(null)
+  const preloadedInterviewIdRef = useRef<string | null>(null)
   const navigate = useNavigate()
-  const { setConfig, setPreloadedMessage } = useInterviewStore()
+  const { setConfig, setPreloadedMessage, setPreloadedInterviewId } = useInterviewStore()
+  const { user } = useAuthStore()
   const recognitionRef = useRef<any>(null)
   const micStatusRef = useRef<MicTestStatus>('idle');
 
@@ -197,17 +200,34 @@ const testMicrophone = async () => {
         subtopic: selectedSubtopic?.name,
         level: level,
         duration: duration,
-        candidateName: 'Candidate',
+        candidateName: user?.name || 'Candidate',
       })
     })
 
+    socketRef.current.on('interview:started', (data: { interviewId: string; candidateName: string; interviewerName: string; interviewerGender?: string; interviewerAvatar?: string }) => {
+      console.log('[ConfigScreen] interview:started received:', data);
+      preloadedInterviewIdRef.current = data.interviewId
+      setPreloadedInterviewId(data.interviewId)
+      localStorage.setItem('preloadedInterviewId', data.interviewId)
+      localStorage.setItem('preloadedInterviewerName', data.interviewerName || 'Interviewer')
+      localStorage.setItem('preloadedInterviewerGender', data.interviewerGender || 'male')
+      if (data.interviewerAvatar) {
+        localStorage.setItem('preloadedInterviewerAvatar', data.interviewerAvatar)
+      }
+      console.log('[ConfigScreen] Saved to localStorage: preloadedInterviewId =', data.interviewId);
+    })
+
     socketRef.current.on('ai:text', (data: { text: string; interviewerName?: string; interviewerGender?: Gender; interviewerAvatar?: string }) => {
-      preloadedDataRef.current = {
+      console.log('[ConfigScreen] ai:text received, text length:', data.text.length);
+      const preloadData = {
         text: data.text,
         interviewerName: data.interviewerName || 'Interviewer',
         interviewerGender: data.interviewerGender,
         interviewerAvatar: data.interviewerAvatar,
       }
+      preloadedDataRef.current = preloadData
+      localStorage.setItem('preloadedMessage', JSON.stringify(preloadData))
+      console.log('[ConfigScreen] Saved preloadedMessage to localStorage');
       setPreloading(false)
       socketRef.current?.disconnect()
       socketRef.current = null
@@ -232,7 +252,13 @@ const testMicrophone = async () => {
           startPreload()
         }
         preloadedDataRef.current = null
+        preloadedInterviewIdRef.current = null
         setPreloading(false)
+        localStorage.removeItem('preloadedInterviewId')
+        localStorage.removeItem('preloadedMessage')
+        localStorage.removeItem('preloadedInterviewerName')
+        localStorage.removeItem('preloadedInterviewerGender')
+        localStorage.removeItem('preloadedInterviewerAvatar')
         setCountdown(3)
       }
     }
@@ -241,6 +267,13 @@ const testMicrophone = async () => {
   const handleCancel = () => {
     setCountdown(null)
     setPreloading(false)
+    preloadedInterviewIdRef.current = null
+    setPreloadedInterviewId(null)
+    localStorage.removeItem('preloadedInterviewId')
+    localStorage.removeItem('preloadedMessage')
+    localStorage.removeItem('preloadedInterviewerName')
+    localStorage.removeItem('preloadedInterviewerGender')
+    localStorage.removeItem('preloadedInterviewerAvatar')
     if (socketRef.current) {
       socketRef.current.disconnect()
       socketRef.current = null
@@ -406,14 +439,21 @@ const testMicrophone = async () => {
                     )}
                   </Button>
                   {micTestStatus === 'failed' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setMicTestStatus('idle')
-                        preloadedDataRef.current = null
-                      }}
-                    >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setMicTestStatus('idle')
+                      preloadedDataRef.current = null
+                      preloadedInterviewIdRef.current = null
+                      setPreloadedInterviewId(null)
+                      localStorage.removeItem('preloadedInterviewId')
+                      localStorage.removeItem('preloadedMessage')
+                      localStorage.removeItem('preloadedInterviewerName')
+                      localStorage.removeItem('preloadedInterviewerGender')
+                      localStorage.removeItem('preloadedInterviewerAvatar')
+                    }}
+                  >
                       <AlertCircle className="w-4 h-4 mr-1" />
                       Use Manual Mode
                     </Button>

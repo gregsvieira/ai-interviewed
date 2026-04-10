@@ -16,11 +16,9 @@ import { SpeakingCircle } from './SpeakingCircle'
 
 export function InterviewRoom() {
   const navigate = useNavigate()
-  const { selectedTopic, selectedSubtopic, selectedLevel, isAiSpeaking, isUserSpeaking, conversationLog, timeRemaining, addMessage, updateMessage, setAiSpeaking, setUserSpeaking, decrementTime, startInterview, endInterview, preloadedMessage, setPreloadedMessage, interviewerGender, interviewerName, interviewerAvatar, setInterviewerAvatar } = useInterviewStore()
+  const { selectedTopic, selectedSubtopic, selectedLevel, isAiSpeaking, isUserSpeaking, conversationLog, timeRemaining, addMessage, updateMessage, setAiSpeaking, setUserSpeaking, decrementTime, startInterview, endInterview, preloadedMessage, setPreloadedMessage, interviewerGender, interviewerName, interviewerAvatar, setInterviewerAvatar, preloadedInterviewId, setPreloadedInterviewId } = useInterviewStore()
   const { token, user } = useAuthStore()
 
-  const [socket, setSocket] = useState<Socket | null>(null)
-  const [interviewId, setInterviewId] = useState<string | null>(null)
   const [sttService] = useState(() => new MediaRecorderService())
   const [webSpeechService] = useState(() => new WebSpeechSTT())
   const [ttsService] = useState(() => new WebSpeechTTS())
@@ -58,15 +56,34 @@ export function InterviewRoom() {
       return
     }
 
+    const storedInterviewId = localStorage.getItem('preloadedInterviewId')
+    const storedMessage = localStorage.getItem('preloadedMessage')
+    console.log('[InterviewRoom] Mounted, checking localStorage:');
+    console.log('[InterviewRoom]   storedInterviewId:', storedInterviewId);
+    console.log('[InterviewRoom]   storedMessage:', storedMessage ? 'exists' : 'null');
+    console.log('[InterviewRoom]   preloadedInterviewId (store):', preloadedInterviewId);
+    console.log('[InterviewRoom]   preloadedMessage (store):', preloadedMessage ? 'exists' : 'null');
+    
+    const effectiveInterviewId = storedInterviewId || preloadedInterviewId
+    const effectivePreloadedMessage = storedMessage ? JSON.parse(storedMessage) : preloadedMessage
+    
     const newSocket = io(WS_URL, {
       auth: { token },
       transports: ['websocket'],
     })
 
     newSocket.on('connect', () => {
-      console.log('[InterviewRoom] Socket connected, interviewStarted:', interviewStarted, 'preloadedMessage:', !!preloadedMessage);
-      if (!interviewStarted) {
-        console.log('[InterviewRoom] Emitting start event...');
+      console.log('[InterviewRoom] Socket connected!');
+      console.log('[InterviewRoom]   effectiveInterviewId:', effectiveInterviewId);
+      console.log('[InterviewRoom]   effectivePreloadedMessage:', effectivePreloadedMessage ? 'exists' : 'null');
+      
+      if (effectiveInterviewId) {
+        console.log('[InterviewRoom] Using preloaded interview ID:', effectiveInterviewId);
+        interviewIdRef.current = effectiveInterviewId;
+        startInterview()
+        setInterviewStarted(true)
+      } else if (!interviewStarted) {
+        console.log('[InterviewRoom] No preloaded ID, emitting start event...');
         newSocket.emit('start', {
           topic: selectedTopic?.name,
           subtopic: selectedSubtopic?.name,
@@ -82,8 +99,10 @@ export function InterviewRoom() {
     })
 
     newSocket.on('interview:started', (data: { interviewId: string; candidateName: string; interviewerName: string; interviewerGender: string; interviewerAvatar?: string }) => {
-      setInterviewId(data.interviewId);
-      interviewIdRef.current = data.interviewId;
+      const storedId = localStorage.getItem('preloadedInterviewId')
+      if (!effectiveInterviewId && !storedId) {
+        interviewIdRef.current = data.interviewId;
+      }
       if (data.interviewerAvatar) {
         setInterviewerAvatar(data.interviewerAvatar);
       }
@@ -95,8 +114,8 @@ export function InterviewRoom() {
 
     newSocket.on('ai:text', (data: { text: string }) => {
       console.log('[InterviewRoom] ai:text received:', data.text?.substring(0, 50))
-      if (!preloadedUsedRef.current && preloadedMessage) {
-        setTypingMessage({ role: 'ai', text: preloadedMessage.text })
+      if (!preloadedUsedRef.current && effectivePreloadedMessage) {
+        setTypingMessage({ role: 'ai', text: effectivePreloadedMessage.text })
       } else {
         setTypingMessage({ role: 'ai', text: data.text })
       }
@@ -114,6 +133,10 @@ export function InterviewRoom() {
       console.log('[InterviewRoom] whisper:result received:', { id: data.id, text: data.text?.substring(0, 30), correcting: data.correcting })
       if (data.text) {
         updateMessage(data.id, data.text)
+        if (socketRef.current?.connected) {
+          console.log('[InterviewRoom] Emitting user:text after whisper result');
+          socketRef.current.emit('user:text', { interviewId: interviewIdRef.current, id: data.id, text: data.text })
+        }
       }
       if (data.correcting && currentUserMessageIdRef.current === data.id) {
         setUserSpeakingText(data.text)
@@ -121,6 +144,13 @@ export function InterviewRoom() {
     })
 
     newSocket.on('interview:ended', () => {
+      setPreloadedMessage(null)
+      setPreloadedInterviewId(null)
+      localStorage.removeItem('preloadedInterviewId')
+      localStorage.removeItem('preloadedMessage')
+      localStorage.removeItem('preloadedInterviewerName')
+      localStorage.removeItem('preloadedInterviewerGender')
+      localStorage.removeItem('preloadedInterviewerAvatar')
       endInterview()
       navigate('/history')
     })
@@ -130,7 +160,6 @@ export function InterviewRoom() {
     })
 
     socketRef.current = newSocket
-    setSocket(newSocket)
     ttsService.onSpeakingChange(setAiSpeaking)
 
     return () => {
@@ -153,13 +182,21 @@ export function InterviewRoom() {
   }, [])
 
   useEffect(() => {
-    console.log('[InterviewRoom] preloadedMessage effect:', { preloadedMessage, preloadedUsed: preloadedUsedRef.current, interviewStarted })
-    if (preloadedMessage && !preloadedUsedRef.current && interviewStarted === false) {
+    const storedMessage = localStorage.getItem('preloadedMessage')
+    const msgToUse = storedMessage ? JSON.parse(storedMessage) : preloadedMessage
+    console.log('[InterviewRoom] preloadedMessage effect triggered:', { 
+      preloadedMessage: preloadedMessage ? 'exists' : 'null',
+      storedMessage: storedMessage ? 'exists' : 'null',
+      msgToUse: msgToUse ? 'exists' : 'null',
+      preloadedUsed: preloadedUsedRef.current, 
+      interviewStarted 
+    })
+    if (msgToUse && !preloadedUsedRef.current && interviewStarted === false) {
       preloadedUsedRef.current = true
       setInterviewStarted(true)
       startInterview()
-      console.log('[InterviewRoom] Setting typing message:', preloadedMessage.text.substring(0, 50) + '...')
-      setTypingMessage({ role: 'ai', text: preloadedMessage.text })
+      console.log('[InterviewRoom] Setting typing message:', msgToUse.text.substring(0, 50) + '...')
+      setTypingMessage({ role: 'ai', text: msgToUse.text })
     }
   }, [preloadedMessage])
 
@@ -192,7 +229,7 @@ export function InterviewRoom() {
         decrementTime()
       }, 1000)
     } else {
-      socket?.emit('end', { interviewId })
+      socketRef.current?.emit('end', { interviewId: interviewIdRef.current })
       navigate('/history')
     }
 
@@ -337,10 +374,16 @@ export function InterviewRoom() {
   }
 
   const handleManualSubmit = () => {
+    console.log('[InterviewRoom] handleManualSubmit called, socketRef:', socketRef.current?.id, 'interviewId:', interviewIdRef.current);
     const text = manualText.trim()
     if (text) {
       addMessage({ role: 'user', text })
-      socket?.emit('user:text', { interviewId: interviewIdRef.current, text })
+      if (socketRef.current?.connected) {
+        console.log('[InterviewRoom] Emitting user:text');
+        socketRef.current.emit('user:text', { interviewId: interviewIdRef.current, text })
+      } else {
+        console.log('[InterviewRoom] Socket not connected!');
+      }
     }
     setManualText('')
     setSttError(null)
@@ -369,9 +412,15 @@ export function InterviewRoom() {
   }
 
   const handleEndInterview = () => {
-    socket?.emit('end', { interviewId: interviewIdRef.current })
+    socketRef.current?.emit('end', { interviewId: interviewIdRef.current })
     ttsService.stop()
     setPreloadedMessage(null)
+    setPreloadedInterviewId(null)
+    localStorage.removeItem('preloadedInterviewId')
+    localStorage.removeItem('preloadedMessage')
+    localStorage.removeItem('preloadedInterviewerName')
+    localStorage.removeItem('preloadedInterviewerGender')
+    localStorage.removeItem('preloadedInterviewerAvatar')
     endInterview()
     navigate('/history')
   }
